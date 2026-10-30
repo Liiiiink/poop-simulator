@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>拉屎模拟器 v1.0</title>
+<style>
+  :root{
+    --bg:#1b1724;
+    --panel:#272134;
+    --line:#3c3450;
+    --txt:#ece7f5;
+    --dim:#9b92b0;
+    --brown:#8a5a2b;
+    --green:#5bc47a;
+    --yellow:#e8c35a;
+    --red:#e2605c;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 0%,#2a2338,var(--bg));
+    color:var(--txt);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    user-select:none;padding:16px;
+  }
+  .app{width:100%;max-width:420px}
+  h1{font-size:20px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--dim);font-size:12px;margin-bottom:14px}
+
+  .stage{
+    position:relative;height:190px;border-radius:16px;overflow:hidden;
+    background:linear-gradient(#efeaf3,#d9d2e2);border:1px solid var(--line);
+  }
+  .toilet{position:absolute;left:50%;bottom:0;transform:translateX(-50%);font-size:92px;line-height:1}
+  .guy{position:absolute;left:50%;bottom:62px;transform:translateX(-50%);font-size:46px;line-height:1;transition:transform .08s}
+  .guy.push{transform:translateX(-50%) scale(1.14) translateY(3px)}
+  .face{position:absolute;left:50%;top:14px;transform:translateX(-50%);font-size:13px;color:#5b5370;letter-spacing:2px}
+  .drop{position:absolute;left:50%;font-size:22px;animation:fall .5s ease-in forwards}
+  @keyframes fall{from{bottom:92px;opacity:1}to{bottom:46px;opacity:0}}
+  .sfx{position:absolute;right:10px;top:10px;font-size:13px;color:#7b7390;opacity:0;transition:opacity .2s}
+  .sfx.on{opacity:1}
+
+  .bars{margin:14px 0 10px}
+  .bar{margin-bottom:9px}
+  .bar .lab{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-bottom:4px}
+  .track{height:11px;background:#15121d;border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+  .fill{height:100%;width:0;border-radius:99px;transition:width .06s linear}
+
+  .btn{
+    width:100%;padding:18px;border:none;border-radius:14px;font-size:19px;font-weight:700;
+    background:linear-gradient(#a9703a,#7d4e24);color:#fff;cursor:pointer;
+    box-shadow:0 5px 0 #5c3818;transition:transform .05s,box-shadow .05s;
+  }
+  .btn:active,.btn.down{transform:translateY(5px);box-shadow:0 0 0 #5c3818}
+  .tip{text-align:center;font-size:11px;color:var(--dim);margin-top:10px;line-height:1.7}
+
+  .modal{
+    position:fixed;inset:0;background:rgba(14,11,20,.82);display:none;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal.on{display:flex}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    padding:22px;width:100%;max-width:340px;text-align:center;
+  }
+  .rank{font-size:56px;font-weight:800;line-height:1;margin-bottom:4px}
+  .title{font-size:17px;margin-bottom:14px}
+  .rows{text-align:left;font-size:13px;border-top:1px solid var(--line);padding-top:12px}
+  .row{display:flex;justify-content:space-between;padding:5px 0;color:var(--dim)}
+  .row b{color:var(--txt);font-weight:600}
+  .cmt{font-size:12px;color:var(--dim);margin:14px 0 16px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🚽 拉屎模拟器</h1>
+  <div class="sub">按住「用力」推进度，别把自己憋坏了</div>
+
+  <div class="stage">
+    <div class="face" id="face">· · ·</div>
+    <div class="guy" id="guy">🧍</div>
+    <div class="toilet">🚽</div>
+    <div class="sfx" id="sfx">噗——</div>
+  </div>
+
+  <div class="bars">
+    <div class="bar">
+      <div class="lab"><span>进度</span><span id="pTxt">0%</span></div>
+      <div class="track"><div class="fill" id="pBar" style="background:var(--brown)"></div></div>
+    </div>
+    <div class="bar">
+      <div class="lab"><span>力度</span><span id="fTxt">0</span></div>
+      <div class="track"><div class="fill" id="fBar" style="background:var(--yellow)"></div></div>
+    </div>
+    <div class="bar">
+      <div class="lab"><span>体力</span><span id="sTxt">100</span></div>
+      <div class="track"><div class="fill" id="sBar" style="background:var(--green);width:100%"></div></div>
+    </div>
+    <div class="bar">
+      <div class="lab"><span>痔疮风险</span><span id="rTxt">0</span></div>
+      <div class="track"><div class="fill" id="rBar" style="background:var(--red)"></div></div>
+    </div>
+  </div>
+
+  <button class="btn" id="btn">开 始 蹲 坑</button>
+  <div class="tip">空格 / 按住按钮 = 用力　·　松开 = 回气<br>力度超过 75 会涨痔疮风险，风险满 100 直接送医</div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="card">
+    <div class="rank" id="rank">S</div>
+    <div class="title" id="rTitle">畅快淋漓</div>
+    <div class="rows" id="rows"></div>
+    <div class="cmt" id="cmt"></div>
+    <button class="btn" id="again">再 来 一 发</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const pBar=$('pBar'),fBar=$('fBar'),sBar=$('sBar'),rBar=$('rBar');
+const pTxt=$('pTxt'),fTxt=$('fTxt'),sTxt=$('sTxt'),rTxt=$('rTxt');
+const btn=$('btn'),guy=$('guy'),face=$('face'),sfx=$('sfx'),stage=document.querySelector('.stage');
+
+let S = null, holding = false, last = 0, raf = 0;
+
+function reset(){
+  S = {phase:'play', t:0, force:0, prog:0, stam:100, risk:0, paper:0, pushes:0, maxF:0, overTime:0};
+}
+
+function start(){
+  reset();
+  btn.textContent = '用 力 !!';
+  last = performance.now();
+  raf = requestAnimationFrame(loop);
+}
+
+function loop(now){
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  if (S.phase === 'play') { step(dt); draw(); }
+  raf = requestAnimationFrame(loop);
+}
+
+function step(dt){
+  S.t += dt;
+
+  // 力度：按住上升，松开回落
+  if (holding && S.stam > 0) S.force = Math.min(100, S.force + 95 * dt);
+  else S.force = Math.max(0, S.force - 130 * dt);
+  S.maxF = Math.max(S.maxF, S.force);
+
+  // 体力：用力耗，休息回
+  if (S.force > 5) S.stam = Math.max(0, S.stam - (S.force / 100) * 17 * dt);
+  else S.stam = Math.min(100, S.stam + 11 * dt);
+
+  // 进度：力度 20 以上才推得动，体力不足效率打折
+  if (S.force > 20){
+    const eff = 0.35 + 0.65 * (S.stam / 100);
+    S.prog = Math.min(100, S.prog + ((S.force - 20) / 80) * 24 * eff * dt);
+    if (S.force > 45 && Math.random() < dt * 6) plop();
+  }
+
+  // 风险：力度过猛会憋出事
+  if (S.force > 75){ S.risk = Math.min(100, S.risk + ((S.force - 75) / 25) * 16 * dt); S.overTime += dt; }
+  else S.risk = Math.max(0, S.risk - 7 * dt);
+
+  if (S.risk >= 100) end(false);
+  else if (S.prog >= 100) end(true);
+}
+
+function draw(){
+  pBar.style.width = S.prog + '%';  pTxt.textContent = Math.floor(S.prog) + '%';
+  fBar.style.width = S.force + '%'; fTxt.textContent = Math.floor(S.force);
+  sBar.style.width = S.stam + '%';  sTxt.textContent = Math.floor(S.stam);
+  rBar.style.width = S.risk + '%';  rTxt.textContent = Math.floor(S.risk);
+  fBar.style.background = S.force > 75 ? 'var(--red)' : 'var(--yellow)';
+
+  guy.classList.toggle('push', S.force > 40);
+  guy.textContent = S.force > 70 ? '🥵' : S.force > 30 ? '😣' : S.stam < 30 ? '😮‍💨' : '🧍';
+  face.textContent = S.force > 75 ? '唔 —— !!!' : S.force > 30 ? '嗯 ……' : S.stam < 30 ? '歇 会 儿' : '· · ·';
+}
+
+function plop(){
+  const d = document.createElement('div');
+  d.className = 'drop';
+  d.textContent = '💩';
+  d.style.marginLeft = (Math.random() * 20 - 10) + 'px';
+  stage.appendChild(d);
+  setTimeout(() => d.remove(), 500);
+  sfx.classList.add('on');
+  clearTimeout(plop.tm);
+  plop.tm = setTimeout(() => sfx.classList.remove('on'), 300);
+}
+
+const TYPES = [
+  '第1型 · 羊屎蛋（硬得像石头）',
+  '第2型 · 香肠状但结块',
+  '第3型 · 表面有裂痕的香肠',
+  '第4型 · 光滑柔软的香蕉型 🏆',
+  '第5型 · 柔软的小块',
+  '第6型 · 糊状便',
+  '第7型 · 完全水样'
+];
+
+function end(win){
+  S.phase = 'done';
+  holding = false;
+  btn.classList.remove('down');
+
+  const t = S.t;
+  let rank, title, cmt, type;
+
+  if (!win){
+    rank = 'F'; title = '送 医 结 局';
+    type = TYPES[0];
+    cmt = '用力过猛，菊花阵亡。医生说：多喝水，多吃菜，别跟自己过不去。';
+  } else {
+    // 理想状态：力度常年压在 60~75、体力没见底、全程 15 秒内
+    const score = 100 - Math.max(0, t - 14) * 2.5 - S.risk * 0.5 - S.overTime * 4 - Math.max(0, 40 - S.stam) * 0.4;
+    if (score >= 88)      { rank='S'; title='畅 快 淋 漓'; cmt='一气呵成，连纸都没用几张。今天一整天的运气都在这儿了。'; type=TYPES[3]; }
+    else if (score >= 72) { rank='A'; title='相 当 顺 利'; cmt='节奏把握得不错，起身的时候腿都没麻。'; type=TYPES[3]; }
+    else if (score >= 55) { rank='B'; title='还 算 正 常'; cmt='中规中矩的一次。下次试着少蛮干、多回气。'; type=TYPES[2]; }
+    else if (score >= 35) { rank='C'; title='有 点 费 劲'; cmt='蹲到腿麻，手机都快没电了。建议多吃点膳食纤维。'; type=TYPES[1]; }
+    else                  { rank='D'; title='惨 烈 一 战'; cmt='这哪是上厕所，这是打仗。明天记得买点香蕉和酸奶。'; type=TYPES[1]; }
+  }
+
+  S.paper = Math.max(2, Math.round(3 + t * 0.4 + S.risk * 0.05));
+
+  $('rank').textContent = rank;
+  $('rank').style.color = rank==='S'?'var(--yellow)':rank==='F'?'var(--red)':'var(--green)';
+  $('rTitle').textContent = title;
+  $('cmt').textContent = cmt;
+  $('rows').innerHTML = [
+    ['耗时', t.toFixed(1) + ' 秒'],
+    ['完成度', Math.floor(S.prog) + '%'],
+    ['最大力度', Math.floor(S.maxF)],
+    ['剩余体力', Math.floor(S.stam)],
+    ['痔疮风险', Math.floor(S.risk)],
+    ['形态鉴定', type],
+    ['纸张消耗', S.paper + ' 格']
+  ].map(([k,v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join('');
+  $('modal').classList.add('on');
+}
+
+// ---- 输入 ----
+function down(e){
+  if (e) e.preventDefault();
+  if ($('modal').classList.contains('on')) return;
+  if (!S || S.phase === 'done'){ start(); return; }
+  holding = true;
+  btn.classList.add('down');
+}
+function up(){ holding = false; btn.classList.remove('down'); }
+
+btn.addEventListener('mousedown', down);
+btn.addEventListener('touchstart', down, {passive:false});
+window.addEventListener('mouseup', up);
+window.addEventListener('touchend', up);
+window.addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat) down(e); });
+window.addEventListener('keyup',   e => { if (e.code === 'Space') up(); });
+
+$('again').addEventListener('click', e => {
+  e.stopPropagation();
+  $('modal').classList.remove('on');
+  guy.textContent = '🧍'; face.textContent = '· · ·';
+  btn.textContent = '开 始 蹲 坑';
+  S = null;
+  pBar.style.width = fBar.style.width = rBar.style.width = '0';
+  sBar.style.width = '100%';
+  pTxt.textContent = '0%'; fTxt.textContent = '0'; sTxt.textContent = '100'; rTxt.textContent = '0';
+});
+</script>
+</body>
+</html>
